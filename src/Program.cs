@@ -2,17 +2,19 @@
 
 if (args.Length < 2)
 {
-    Console.WriteLine("Usage: dotnet run <path-to-json-file> <nodeNameToFilterOut>");
+    Console.WriteLine("Usage: dotnet run <path-to-json-file> <nodeNameToFilterOut1> [nodeNameToFilterOut2] [nodeNameToFilterOutN]");
     return;
 }
 
 var inputPath = args[0];
-var outputPath = $"{inputPath}.filtered.json";
+var fi = new FileInfo(inputPath);
+var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(fi.Name);
+var outputPath = Path.Combine(fi.DirectoryName!, $"{fileNameWithoutExtension}.filtered.json");
 
-var nodeNameToFilterOut = args[1];
+var nodesToFilterOut = new HashSet<string>(args.Skip(1), StringComparer.OrdinalIgnoreCase);
 
 Console.WriteLine($"Reading JSON from: {inputPath}");
-Console.WriteLine($"Writing filtered JSON (no '{nodeNameToFilterOut}' nodes) to: {outputPath}");
+Console.WriteLine($"Writing filtered JSON (removing {nodesToFilterOut.Count} node types) to: {outputPath}");
 
 try
 {
@@ -24,17 +26,17 @@ try
         Indented = true
     });
 
-    var removedNodesCount = ProcessElement(document.RootElement, writer, nodeNameToFilterOut);
+    var removedNodesCount = ProcessElement(document.RootElement, writer, nodesToFilterOut);
     writer.Flush();
 
-    Console.WriteLine($"JSON document recreated successfully with {removedNodesCount} '{nodeNameToFilterOut}' nodes removed.");
+    Console.WriteLine($"JSON document recreated successfully with {removedNodesCount} nodes removed.");
 }
 catch (Exception ex)
 {
     Console.WriteLine($"Error: {ex}");
 }
 
-static int ProcessElement(JsonElement element, Utf8JsonWriter writer, string nodeNameToFilterOut)
+static int ProcessElement(JsonElement element, Utf8JsonWriter writer, HashSet<string> nodesToFilterOut)
 {
     var removedCount = 0;
 
@@ -44,22 +46,21 @@ static int ProcessElement(JsonElement element, Utf8JsonWriter writer, string nod
             writer.WriteStartObject();
             foreach (JsonProperty property in element.EnumerateObject())
             {
-                if (string.Equals(property.Name, nodeNameToFilterOut, StringComparison.OrdinalIgnoreCase))
+                if (nodesToFilterOut.Contains(property.Name))
                 {
                     removedCount++;
                     continue;
                 }
 
                 writer.WritePropertyName(property.Name);
-                removedCount += ProcessElement(property.Value, writer, nodeNameToFilterOut);
+                removedCount += ProcessElement(property.Value, writer, nodesToFilterOut);
             }
             writer.WriteEndObject();
-            break;
-        case JsonValueKind.Array:
+            break;        case JsonValueKind.Array:
             writer.WriteStartArray();
             foreach (JsonElement arrayElement in element.EnumerateArray())
             {
-                removedCount += ProcessElement(arrayElement, writer, nodeNameToFilterOut);
+                removedCount += ProcessElement(arrayElement, writer, nodesToFilterOut);
             }
             writer.WriteEndArray();
             break;
