@@ -24,7 +24,7 @@ try
         Indented = true
     });
 
-    int removedNodesCount = ProcessElement(document.RootElement, writer, nodeNameToFilterOut);
+    var removedNodesCount = ProcessElement(document.RootElement, writer, nodeNameToFilterOut);
     writer.Flush();
 
     Console.WriteLine($"JSON document recreated successfully with {removedNodesCount} '{nodeNameToFilterOut}' nodes removed.");
@@ -36,7 +36,7 @@ catch (Exception ex)
 
 static int ProcessElement(JsonElement element, Utf8JsonWriter writer, string nodeNameToFilterOut)
 {
-    int removedCount = 0;
+    var removedCount = 0;
 
     switch (element.ValueKind)
     {
